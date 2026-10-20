@@ -1,0 +1,31 @@
+name: grapevine_mobile_RNA
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  # --- pin exact versions so the environment is reproducible ---
+  - python=3.11
+  - samtools=1.17
+  - bcftools=1.17
+  - bedtools=2.31.0
+  - star=2.7.10b
+  - subread=2.0.6           # featureCounts
+  - stringtie=2.2.1
+  - gffread=0.12.7
+  - seqkit=2.6.1
+  - minimap2=2.26           # long-read mapping
+  - fastqc=0.12.1
+  - multiqc=1.19
+  # --- R for stats/plots ---
+  - r-base=4.3
+  - r-tidyverse=2.0.0
+  - r-data.table
+  - bioconductor-genomicranges
+  # --- optional: workflow + pip ---
+  - snakemake-minimal=7.32
+  - pip
+  - pip:
+      - cyvcf2
+# Create with:   mamba env create -f environment.yml
+# Export exact state later with:  conda env export --no-builds > environment.lock.yml

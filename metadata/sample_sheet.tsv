@@ -1,0 +1,7 @@
+sample_id	graft_combo	scion_genotype	rootstock_genotype	tissue	tissue_code	source_of_mobile	biological_rep	sequencing	library_id	raw_fastq_R1	raw_fastq_R2	notes
+SRL1	Shz/140-Ru	Shiraz	140-Ru	leaf	L	140-Ru_root	1	illumina_PE150	LIB001	data/raw/SRL1.R1.fq.gz	data/raw/SRL1.R2.fq.gz
+SRL2	Shz/140-Ru	Shiraz	140-Ru	leaf	L	140-Ru_root	2	illumina_PE150	LIB002	data/raw/SRL2.R1.fq.gz	data/raw/SRL2.R2.fq.gz
+RSR1	140-Ru/Shz	140-Ru	Shiraz	root	R	140-Ru_scion	1	illumina_PE150	LIB003	data/raw/RSR1.R1.fq.gz	data/raw/RSR1.R2.fq.gz
+ShzShz_L1	Shz/Shz	Shiraz	Shiraz	leaf	L	homograft_control	1	illumina_PE150	LIB004	data/raw/ShzShz_L1.R1.fq.gz	data/raw/ShzShz_L1.R2.fq.gz	control
+# Rules: one row per sample; use a controlled vocabulary (no free text in key columns);
+# sample_id must match file names and be used consistently everywhere downstream.
