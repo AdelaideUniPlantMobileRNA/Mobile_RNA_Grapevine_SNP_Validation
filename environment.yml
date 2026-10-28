@@ -1,31 +1,45 @@
-name: grapevine_mobile_RNA
+# Conda environment for the grapevine graft mobile-RNA SNP pipeline.
+# Deployed on Phoenix HPC at a scratch PREFIX (see scripts/00_setup_env.sh),
+# which is what the pipeline scripts activate; the name below is used only if
+# you create it by name instead.
+#
+# Build (channel override avoids the `defaults` Terms-of-Service prompt on
+# managed installs and is the recommended bioconda setup):
+#   conda env create -p <prefix> --file environment.yml \
+#       --override-channels -c conda-forge -c bioconda
+# Export the exact resolved state later with:
+#   conda env export --no-builds > environment.lock.yml
+name: grapevine_snp
 channels:
   - conda-forge
   - bioconda
-  - defaults
 dependencies:
-  # --- pin exact versions so the environment is reproducible ---
-  - python=3.11
+  # --- Step 1.1 : diploid-assembly diagnostic calling ---
+  - dipcall                 # assembly -> diploid VCF + per-hap confident BED
+  - k8                      # JS engine dipcall / paftools rely on
+  - minimap2=2.26           # assembly-to-reference alignment
+  # --- variant handling ---
   - samtools=1.17
   - bcftools=1.17
   - bedtools=2.31.0
+  # --- Step 1.2 : diagnostic-site builder (R) ---
+  - r-base=4.3
+  - r-data.table
+  - r-tidyverse=2.0.0       # optional downstream stats/plots
+  - bioconductor-genomicranges
+  # --- Step 2 : RNA confirmation ---
   - star=2.7.10b
-  - subread=2.0.6           # featureCounts
+  - gatk4                   # ASEReadCounter allele counts
+  - subread=2.0.6           # featureCounts (expression)
   - stringtie=2.2.1
   - gffread=0.12.7
   - seqkit=2.6.1
-  - minimap2=2.26           # long-read mapping
+  # --- QC ---
   - fastqc=0.12.1
   - multiqc=1.19
-  # --- R for stats/plots ---
-  - r-base=4.3
-  - r-tidyverse=2.0.0
-  - r-data.table
-  - bioconductor-genomicranges
-  # --- optional: workflow + pip ---
+  # --- misc ---
+  - python=3.11
   - snakemake-minimal=7.32
   - pip
   - pip:
       - cyvcf2
-# Create with:   mamba env create -f environment.yml
-# Export exact state later with:  conda env export --no-builds > environment.lock.yml
