@@ -43,3 +43,13 @@ Thumbs.db
 # ===== DO commit: =====
 # scripts/, workflow/, config/, docs/, metadata/, README.md, environment.yml
 # Track large files, if needed, with Git LFS or record their md5 in metadata/ instead.
+
+# ===== test scratch files (written by scripts/tests/*.sh) =====
+scripts/tests/_t09/
+scripts/tests/_t09v3/
+scripts/tests/merged_genotypes.tsv
+scripts/tests/expected_diagnostic_sites.tsv
+scripts/tests/diagnostic_sites.tsv
+scripts/tests/*.hap1.bed
+# packaging leftovers
+*.zip

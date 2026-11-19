@@ -9,6 +9,8 @@ R2="$HERE/../02_build_diagnostic_sites.R"
 
 # ---- toy merged_genotypes.tsv : CHROM POS REF ALT shiraz_GT ruggeri_GT ----
 cat > "$HERE/merged_genotypes.tsv" <<'EOF'
+c2	100	A	T	1|1	./.
+c2	200	A	G	./.	1|1
 c1	150	A	C	1|1	0|0
 c1	160	A	T	1|.	0|0
 c1	420	G	T	0|1	1|1
@@ -20,8 +22,9 @@ c1	800	A	T	1|1	./.
 c1	1500	A	T	1|1	./.
 EOF
 
-# ---- primary (hap1) coverage: both genotypes cover c1:1-1000 (0-based half-open) ----
-printf 'c1\t0\t1000\n' > "$HERE/shiraz.hap1.bed"
+# ---- primary (hap1) coverage: both cover c1:1-1000; only SHIRAZ covers c2:1-1000 ----
+# c2 is listed FIRST in merged_genotypes (VCF order) -> catches the row-order bug.
+printf 'c1\t0\t1000\nc2\t0\t1000\n' > "$HERE/shiraz.hap1.bed"
 printf 'c1\t0\t1000\n' > "$HERE/ruggeri.hap1.bed"
 
 # ---- toy gff3 : g1 100-500 (exons 100-200,400-500) ; g2 700-900 (exon 700-750) ----
@@ -31,6 +34,8 @@ c1	x	exon	100	200	.	+	.	ID=g1.e1;Parent=g1
 c1	x	exon	400	500	.	+	.	ID=g1.e2;Parent=g1
 c1	x	gene	700	900	.	+	.	ID=g2;Name=GENE2
 c1	x	exon	700	750	.	+	.	ID=g2.e1;Parent=g2
+c2	x	gene	150	250	.	+	.	ID=g3;Name=GENE3
+c2	x	exon	150	250	.	+	.	ID=g3.e1;Parent=g3
 EOF
 
 # ---- hand-checked truth table (shipping output schema) ----
@@ -42,6 +47,7 @@ c1	420	G	T	G,T	T	G	NA	TRUE	FALSE	FALSE	g1	GENE1	TRUE
 c1	450	G	A,T	A	T	A	T	TRUE	TRUE	FALSE	g1	GENE1	TRUE
 c1	600	C	G	C	G	C	G	TRUE	TRUE	FALSE	NA	NA	FALSE
 c1	800	A	T	T	A	T	A	TRUE	TRUE	FALSE	g2	GENE2	FALSE
+c2	200	A	G	A	G	A	G	TRUE	TRUE	FALSE	g3	GENE3	TRUE
 EOF
 
 echo ">> running 02 on toy data ..."

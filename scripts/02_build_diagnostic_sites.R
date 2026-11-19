@@ -63,10 +63,21 @@ read_bed <- function(f) {
 shz_bed <- read_bed(file.path(outdir, "shiraz.hap1.bed"))
 rug_bed <- read_bed(file.path(outdir, "ruggeri.hap1.bed"))
 
-q <- data.table(chrom = gt$CHROM, start = gt$POS, end = gt$POS)
-setkey(q, chrom, start, end)
-in_shz <- !is.na(foverlaps(q, shz_bed, type = "any", mult = "first", which = TRUE))
-in_rug <- !is.na(foverlaps(q, rug_bed, type = "any", mult = "first", which = TRUE))
+# FIX (Nov 2026): setkey() RE-SORTS the query table, so foverlaps() answers come back
+# in sorted (chrom,pos) order, not in gt row order. merged_genotypes.tsv is in VCF
+# contig order (not alphabetical), so the old code paired each position with the
+# coverage answer of a DIFFERENT position. Helper below keeps a row id and returns
+# answers in the original row order.
+ovl_first <- function(chrom, pos, y, col) {
+  q <- data.table(chrom = chrom, start = pos, end = pos, rid = seq_along(pos))
+  setkey(q, chrom, start, end)
+  o <- foverlaps(q, y, type = "any", mult = "first")
+  setorder(o, rid)
+  stopifnot(nrow(o) == length(pos), identical(o$rid, seq_along(pos)))
+  o[[col]]
+}
+in_shz <- !is.na(ovl_first(gt$CHROM, gt$POS, shz_bed, "start"))
+in_rug <- !is.na(ovl_first(gt$CHROM, gt$POS, rug_bed, "start"))
 
 # ---- split phased GT into two haplotype tokens ("1|." -> "1",".") ----
 gt[, c("s1","s2") := tstrsplit(shiraz_GT,  "[|/]")]
@@ -158,12 +169,9 @@ if (!is.na(gffpath) && file.exists(gffpath)) {
   message("  shared chrom names: ", length(shared),
           if (length(shared) == 0) "  <-- NAME MISMATCH: gene/exon will be empty" else "")
 
-  dq <- data.table(chrom = diag$CHROM, start = diag$POS, end = diag$POS)
-  setkey(dq, chrom, start, end)
-  gi <- foverlaps(dq, genes, type = "any", mult = "first")
-  diag[, gene_id   := gi$gene_id]
-  diag[, gene_name := gi$gene_name]
-  diag[, is_exonic := !is.na(foverlaps(dq, exons, type = "any", mult = "first", which = TRUE))]
+  diag[, gene_id   := ovl_first(CHROM, POS, genes, "gene_id")]
+  diag[, gene_name := ovl_first(CHROM, POS, genes, "gene_name")]
+  diag[, is_exonic := !is.na(ovl_first(CHROM, POS, exons, "start"))]
 } else {
   diag[, `:=`(gene_id = NA_character_, gene_name = NA_character_, is_exonic = NA)]
   if (is.na(gffpath)) message("No GFF given -> gene/exon columns left NA.")

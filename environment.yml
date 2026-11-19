@@ -29,7 +29,7 @@ dependencies:
   - bioconductor-genomicranges
   # --- Step 2 : RNA confirmation ---
   - star=2.7.10b
-  - gatk4                   # ASEReadCounter allele counts
+  - gatk4                   # ASEReadCounter: tested, NOT used (bcftools mpileup AD instead)
   - subread=2.0.6           # featureCounts (expression)
   - stringtie=2.2.1
   - gffread=0.12.7
@@ -38,8 +38,16 @@ dependencies:
   - fastqc=0.12.1
   - multiqc=1.19
   # --- misc ---
-  - python=3.11
+  - python=3.10            # version actually used on Phoenix
+  - pandas
+  - numpy
+  - scipy                   # baymobil dependency
+  - matplotlib              # baymobil import dependency
+  - multipledispatch        # baymobil dependency
+  - pandarallel             # baymobil dependency (not used for parallelism here)
   - snakemake-minimal=7.32
   - pip
   - pip:
       - cyvcf2
+      - --extra-index-url https://test.pypi.org/simple/
+      - baymobil               # Bayesian mobility test (Tomkins et al. 2022)

@@ -47,25 +47,41 @@ rootstock→scion mobility. Both homozygous-but-different sites *and* heterozygo
 contribute, as long as a private allele exists (interval operations with **BEDTools**
 [4]). Sites are tagged with gene/exon context from the PN40024-on-T2T GFF3.
 
-**Step 2 — RNA confirmation and homograft filtering.**
-Align the two self-graft (homograft) RNA-seq sets (Shz/Shz, Ru/Ru) to `T2T_ref` with
-**STAR** [5]. At each diagnostic position, count ref/alt reads with
-**GATK ASEReadCounter** [6] (or **BCFtools** mpileup [3]). Keep positions that are
-(a) expressed, and (b) show **only the self allele** in the matching homograft; discard
-positions that leak the other allele (mis-mapping / paralogues, or a heterozygous site
-whose haplotig was missed in the assembly). Optionally score each site with a
-beta-binomial model in **R** [7] / **tidyverse** [8].
+**Step 2 — RNA evidence from homografts (marker discovery + confirmation).** *(implemented — `scripts/03–09`, `docs/step2_notes.md`)*
+Homograft RNA-seq (SS = Shiraz/Shiraz, RR = 140-Ru/140-Ru; 4 tissues: B, L, PY, R) is
+aligned to `T2T_ref` with **STAR** [5] (two-pass, uniquely mapped reads only).
+Alternate alleles are discovered in exons and allele-specific read counts
+(AD/ADF/ADR) are taken at all candidate positions with **BCFtools mpileup** [3]
+(no genotype calling; GATK ASEReadCounter was tested and dropped because it rejects
+positions with more than one variant context). Hard-threshold filters L1–L4
+(`docs/assumptions.md`) define an **RNA-only** marker set that adds donor alleles
+missed by the assemblies (assembly gaps, clone-specific variants); a donor allele is
+accepted if it is seen in **any** donor tissue and is absent (≤2%) from the
+tissue-matched recipient homograft.
 
-**Step 3 — Master diagnostic database.**
-Validated, expressed, clean diagnostic positions, grouped per gene, prioritising genes
-with >=2 diagnostic sites within one amplicon and preferring indels (indels give a size
-difference usable by gel without a restriction enzyme).
+**Step 3 — Marker set used for detection.**
+Genome markers (Step 1: exonic, donor-private SNP alleles; used directly, no RNA
+support required) ∪ RNA-only markers (Step 2), minus any marker whose donor allele is
+seen in the tissue-matched **recipient** homograft (≥1 read and >2%). SNPs only;
+indels were evaluated and not used (they would add ~2% testable genes; see
+`docs/analysis_log.md`).
 
-**Step 4 — Mobile-transcript detection in heterografts.**
-Align heterograft RNA-seq (e.g. Shz-scion/Ru-root) to `T2T_ref` with STAR [5], and at
-each diagnostic position count reads carrying the **donor allele** (whatever it is, ref
-or alt) with ASEReadCounter [6]. Require **multiple diagnostic sites per transcript to
-agree** (co-occurring evidence) and compare to the homograft background.
+**Step 4 — Mobile-transcript detection in heterografts (Bayesian).** *(implemented — `scripts/11–15`)*
+Heterograft RNA-seq is aligned the same way; donor- and total-allele read counts are
+taken at every marker. Every marker with ≥1 heterograft read is tested with
+**baymobil** [14] (exact Bayesian inference, Tomkins et al. 2022 [15]): the error rate
+is estimated from the tissue-matched recipient homograft (local) and from the donor
+homograft (all tissues pooled), and a per-SNP log10 Bayes factor compares "all donor
+reads are errors" with "some reads are mobile". Per-SNP log10BF are **summed per gene**
+(published scheme [15]); a replicate passes if the gene log10BF ≥ 1, and a
+gene × tissue is called mobile if it passes in **≥2 biological replicates**. A
+gene-pooled Bayes factor (our extension, not published) is reported side by side.
+
+**Step 5 — Verification.** *(scripts/16–19, check_gene_labels.py)*
+Global donor-allele fraction heterograft vs homograft; replicate concordance vs
+chance; heterograft-specific contamination check following Paajanen et al. 2025 [16];
+independent re-counting with samtools and recomputation with baymobil's `run_bayes`
+on randomly chosen markers; gene-ID-vs-coordinate check against the GFF3.
 
 ## 4. Known limitations
 - **Ruggeri divergence:** Ruggeri-specific / high-divergence regions do not anchor to
@@ -90,9 +106,10 @@ agree** (co-occurring evidence) and compare to the homograft background.
 ├── README.md
 ├── environment.yml          <- conda env (command-line tools)
 ├── config/config.yaml       <- all paths & parameters
-├── docs/                    <- experiment_background.md, analysis_log.md, method_notes.md
+├── docs/                    <- experiment_background.md, analysis_log.md, method_notes.md,
+│                               step2_notes.md (Steps 2–5), assumptions.md
 ├── metadata/                <- sample_sheet.tsv, mobile_candidates.tsv
-├── scripts/                 <- 00_setup_env.sh, 01_dipcall.sh, 02_build_diagnostic_sites.R, tests/
+├── scripts/                 <- 00–19 pipeline scripts (run order: docs/step2_notes.md), tests/
 ├── data/ (not in git)       <- raw/ processed/ external/
 ├── results/ (not in git)
 └── logs/ (not in git)
@@ -109,7 +126,7 @@ type is treated).
 | SAMtools / BCFtools | VCF norm/merge, pileup, BAM ops | Danecek et al. 2021, *GigaScience* 10:giab008. doi:10.1093/gigascience/giab008 [3] |
 | BEDTools | interval operations | Quinlan & Hall 2010, *Bioinformatics* 26:841–842. doi:10.1093/bioinformatics/btq033 [4] |
 | STAR | RNA-seq alignment | Dobin et al. 2013, *Bioinformatics* 29:15–21. doi:10.1093/bioinformatics/bts635 [5] |
-| GATK (ASEReadCounter) | allele-specific read counts | McKenna et al. 2010, *Genome Res* 20:1297–1303. doi:10.1101/gr.107524.110 [6] |
+| GATK (ASEReadCounter) | tested, NOT used (see Step 2) | McKenna et al. 2010, *Genome Res* 20:1297–1303. doi:10.1101/gr.107524.110 [6] |
 | R | statistics | R Core Team (version used). https://www.R-project.org/ [7] |
 | tidyverse / data.table | data handling in R | Wickham et al. 2019, *JOSS* 4:1686. doi:10.21105/joss.01686 [8] |
 | AdapterRemoval v2 | read trimming (upstream) | Schubert et al. 2016, *BMC Res Notes* 9:88. doi:10.1186/s13104-016-1900-2 [9] |
@@ -117,6 +134,10 @@ type is treated).
 | SeqKit | FASTA/FASTQ manipulation | Shen et al. 2016, *PLoS ONE* 11:e0163962. doi:10.1371/journal.pone.0163962 [11] |
 | featureCounts (Subread) | gene-level counts (expression) | Liao et al. 2014, *Bioinformatics* 30:923–930. doi:10.1093/bioinformatics/btt656 [12] |
 | FastQC / MultiQC | QC reports | Ewels et al. 2016, *Bioinformatics* 32:3047–3048. doi:10.1093/bioinformatics/btw354 [13] |
+| baymobil | Bayesian mobility test | Hoerbst, Morris & Tomkins, Research Square preprint 2023. doi:10.21203/rs.3.rs-2520491/v1 [14] |
+| (method) | exact Bayesian inference for graft-mobile transcripts | Tomkins et al. 2022, *J R Soc Interface* 19:20220644. doi:10.1098/rsif.2022.0644 [15] |
+| (method) | re-analysis / recommended checks for mobile mRNA | Paajanen et al. 2025, *Nat Plants* 11:977–984. doi:10.1038/s41477-025-01979-x [16] |
+| Python: pandas / NumPy | data handling in Python | McKinney 2010 (SciPy proc.); Harris et al. 2020, *Nature* 585:357–362. doi:10.1038/s41586-020-2649-2 [17] |
 
 > Record the EXACT version of every tool you run (from `environment.yml` /
 > `conda list`) in `docs/analysis_log.md`, and cite these versions in any thesis/paper.
